@@ -28,12 +28,12 @@ fi
 # Build and deploy with Docker Compose
 cd structguard
 echo "🐳 Building Docker image..."
-docker-compose down || true
-docker-compose build --no-cache
-docker-compose up -d
+docker compose down || true
+docker compose build --no-cache
+docker compose up -d
 
 echo "✅ Deployment complete!"
-docker-compose ps
+docker compose ps
 ENDSSH
 
 echo "✅ Deployment script finished!"
