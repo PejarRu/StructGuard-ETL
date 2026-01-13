@@ -3,9 +3,11 @@ StructGuard-API: Stateless FastAPI middleware for structure-preserving content t
 Acts as a structural firewall for LLMs to edit massive texts without breaking XML/JSON structure.
 """
 
+from __future__ import annotations
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 import json
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -226,7 +228,7 @@ def inject_xml(flat_map: Dict[str, str], metadata: Dict[str, Any]) -> str:
     try:
         dom = minidom.parseString(xml_str)
         return dom.toprettyxml(indent="  ").strip()
-    except:
+    except Exception:
         # Fallback to non-pretty version if pretty print fails
         return xml_str
 
