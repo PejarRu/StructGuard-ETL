@@ -69,12 +69,28 @@ pip install -r requirements-test.txt
 
 ## 🏃 Ejecución
 
+### Opción 1: Script de inicio rápido
+```bash
+./start.sh
+```
+
+### Opción 2: Manual
 ```bash
 # Iniciar el servidor
 python main.py
 
 # O usando uvicorn directamente
 uvicorn main:app --reload
+```
+
+### Opción 3: Docker
+```bash
+# Construir y ejecutar con Docker Compose
+docker-compose up -d
+
+# O construir la imagen manualmente
+docker build -t structguard-api .
+docker run -p 8000:8000 structguard-api
 ```
 
 El servidor estará disponible en `http://localhost:8000`
