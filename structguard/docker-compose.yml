@@ -5,8 +5,6 @@ services:
     build: .
     container_name: structguard-api
     restart: unless-stopped
-    ports:
-      - "8001:8000"
     environment:
       - PYTHONUNBUFFERED=1
     healthcheck:
@@ -15,5 +13,16 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - dokploy-network
     labels:
-      - "com.docker.compose.project=structguard"
+      - "traefik.enable=true"
+      - "traefik.http.routers.structguard.rule=Host(`structguard.antonberzins.com`)"
+      - "traefik.http.routers.structguard.entrypoints=websecure"
+      - "traefik.http.routers.structguard.tls.certresolver=letsencrypt"
+      - "traefik.http.services.structguard.loadbalancer.server.port=8000"
+      - "traefik.docker.network=dokploy-network"
+
+networks:
+  dokploy-network:
+    external: true
