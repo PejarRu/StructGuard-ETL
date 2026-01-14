@@ -25,15 +25,16 @@ else
     git clone https://github.com/PejarRu/StructGuard-ETL.git .
 fi
 
-# Build and deploy with Docker Compose
+# Build and deploy with Docker Swarm Stack
 cd structguard
 echo "🐳 Building Docker image..."
-docker compose down || true
-docker compose build --no-cache
-docker compose up -d
+docker build -t structguard-api:latest .
+
+echo "🚢 Deploying to Docker Swarm..."
+docker stack deploy -c docker-compose.yml structguard
 
 echo "✅ Deployment complete!"
-docker compose ps
+docker stack ps structguard
 ENDSSH
 
 echo "✅ Deployment script finished!"

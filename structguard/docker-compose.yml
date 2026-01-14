@@ -1,8 +1,19 @@
 services:
   structguard-api:
+    image: structguard-api:latest
     build: .
-    container_name: structguard-api
-    restart: unless-stopped
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.structguard.rule=Host(`structguard.antonberzins.com`)"
+        - "traefik.http.routers.structguard.entrypoints=websecure"
+        - "traefik.http.routers.structguard.tls.certresolver=letsencrypt"
+        - "traefik.http.services.structguard.loadbalancer.server.port=8000"
+        - "traefik.docker.network=dokploy-network"
+      restart_policy:
+        condition: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
     healthcheck:
@@ -13,13 +24,6 @@ services:
       start_period: 40s
     networks:
       - dokploy-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.structguard.rule=Host(`structguard.antonberzins.com`)"
-      - "traefik.http.routers.structguard.entrypoints=websecure"
-      - "traefik.http.routers.structguard.tls.certresolver=letsencrypt"
-      - "traefik.http.services.structguard.loadbalancer.server.port=8000"
-      - "traefik.docker.network=dokploy-network"
 
 networks:
   dokploy-network:
