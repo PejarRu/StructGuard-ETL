@@ -13,7 +13,7 @@ services:
         - "traefik.http.services.structguard.loadbalancer.server.port=8000"
         - "traefik.docker.network=dokploy-network"
       restart_policy:
-        condition: unless-stopped
+        condition: on-failure
     environment:
       - PYTHONUNBUFFERED=1
     healthcheck:
