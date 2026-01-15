@@ -160,3 +160,150 @@ class WordPressXmlAdapter(BaseAdapter):
                 return f"{tag_name} in: {title_elem.text[:50]}"
         
         return f"{tag_name}"
+
+    def validate(self, skeleton: bytes, modifications: bytes) -> dict:
+        """
+        Validate modifications against skeleton structure.
+        
+        Returns a dictionary with:
+        - status: "valid" or "error"
+        - diff_stats: Statistics about changes
+        - changes: List of actual changes
+        - errors: List of validation errors (if any)
+        """
+        errors = []
+        changes = []
+        
+        try:
+            # Parse skeleton to get all valid XPath IDs
+            parser = etree.XMLParser(strip_cdata=False, remove_blank_text=False)
+            tree = etree.fromstring(skeleton, parser)
+            
+            # Extract all valid XPaths from skeleton
+            valid_xpaths = set()
+            xpath_to_content = {}
+            xpath_to_context = {}
+            
+            for xpath_pattern in self.SAFE_ZONES:
+                elements = tree.xpath(xpath_pattern, namespaces=self.NAMESPACES)
+                for element in elements:
+                    text_content = self._get_text_content(element)
+                    if not text_content or not text_content.strip():
+                        continue
+                    
+                    element_id = tree.getpath(element)
+                    valid_xpaths.add(element_id)
+                    xpath_to_content[element_id] = text_content
+                    xpath_to_context[element_id] = self._build_context(element)
+            
+            # Parse modifications
+            modifications_data = json.loads(modifications.decode("utf-8"))
+            
+            # Track modification IDs
+            modification_ids = set()
+            changed_count = 0
+            
+            for item in modifications_data:
+                item_id = item.get("id")
+                edited_text = item.get("edited_text")
+                original_text = item.get("original_text", "")
+                
+                if not item_id:
+                    errors.append({"error": "missing_id", "item": item})
+                    continue
+                
+                modification_ids.add(item_id)
+                
+                # Check if ID exists in skeleton
+                if item_id not in valid_xpaths:
+                    errors.append({
+                        "error": "unknown_id",
+                        "id": item_id,
+                        "message": f"ID not found in skeleton: {item_id}"
+                    })
+                    continue
+                
+                # Check if content has actually changed
+                skeleton_content = xpath_to_content.get(item_id, "")
+                
+                # Only track changes if edited_text is provided and different
+                if edited_text is not None and edited_text != skeleton_content:
+                    changed_count += 1
+                    changes.append({
+                        "id": item_id,
+                        "context": xpath_to_context.get(item_id, ""),
+                        "original_text": skeleton_content,
+                        "new_text": edited_text
+                    })
+            
+            # Check for missing IDs (IDs in skeleton but not in modifications)
+            missing_ids = valid_xpaths - modification_ids
+            if missing_ids:
+                for missing_id in missing_ids:
+                    errors.append({
+                        "error": "missing_modification",
+                        "id": missing_id,
+                        "message": f"Skeleton element has no corresponding modification: {missing_id}"
+                    })
+            
+            # Determine status
+            status = "valid" if not errors else "error"
+            
+            return {
+                "status": status,
+                "diff_stats": {
+                    "total_items": len(valid_xpaths),
+                    "modified_items": changed_count,
+                    "unchanged_items": len(valid_xpaths) - changed_count,
+                    "modifications_provided": len(modification_ids),
+                    "missing_modifications": len(missing_ids),
+                    "unknown_ids": sum(1 for e in errors if e.get("error") == "unknown_id")
+                },
+                "changes": changes,
+                "errors": errors
+            }
+            
+        except json.JSONDecodeError as e:
+            return {
+                "status": "error",
+                "diff_stats": {
+                    "total_items": 0,
+                    "modified_items": 0,
+                    "unchanged_items": 0,
+                    "modifications_provided": 0,
+                    "missing_modifications": 0,
+                    "unknown_ids": 0
+                },
+                "changes": [],
+                "errors": [{"error": "invalid_json", "message": str(e)}]
+            }
+        except etree.XMLSyntaxError as e:
+            return {
+                "status": "error",
+                "diff_stats": {
+                    "total_items": 0,
+                    "modified_items": 0,
+                    "unchanged_items": 0,
+                    "modifications_provided": 0,
+                    "missing_modifications": 0,
+                    "unknown_ids": 0
+                },
+                "changes": [],
+                "errors": [{"error": "invalid_xml", "message": str(e)}]
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "diff_stats": {
+                    "total_items": 0,
+                    "modified_items": 0,
+                    "unchanged_items": 0,
+                    "modifications_provided": 0,
+                    "missing_modifications": 0,
+                    "unknown_ids": 0
+                },
+                "changes": [],
+                "errors": [{"error": "unknown", "message": str(e)}]
+            }
+        
+        return f"{tag_name}"
