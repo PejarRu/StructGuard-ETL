@@ -33,12 +33,13 @@ class WordPressXmlAdapter(BaseAdapter):
         Returns JSON bytes containing extraction schema.
         """
         parser = etree.XMLParser(strip_cdata=False, remove_blank_text=False)
-        tree = etree.fromstring(source, parser)
+        root = etree.fromstring(source, parser)
+        tree = etree.ElementTree(root)
 
         extraction_items = []
 
         for xpath_pattern in self.SAFE_ZONES:
-            elements = tree.xpath(xpath_pattern, namespaces=self.NAMESPACES)
+            elements = root.xpath(xpath_pattern, namespaces=self.NAMESPACES)
             for element in elements:
                 # Get text content
                 text_content = self._get_text_content(element)
@@ -70,7 +71,7 @@ class WordPressXmlAdapter(BaseAdapter):
         Returns reconstructed XML bytes.
         """
         parser = etree.XMLParser(strip_cdata=False, remove_blank_text=False)
-        tree = etree.fromstring(skeleton, parser)
+        root = etree.fromstring(skeleton, parser)
 
         # Load modifications
         modifications_data = json.loads(modifications.decode("utf-8"))
@@ -84,7 +85,7 @@ class WordPressXmlAdapter(BaseAdapter):
                 continue
 
             # Find element using the XPath ID
-            elements = self._xpath_to_elements(tree, xpath_id)
+            elements = self._xpath_to_elements(root, xpath_id)
             
             if not elements:
                 # Element not found, skip
@@ -99,7 +100,7 @@ class WordPressXmlAdapter(BaseAdapter):
 
         # Serialize back to XML
         result = etree.tostring(
-            tree, encoding="utf-8", xml_declaration=True, pretty_print=True
+            root, encoding="utf-8", xml_declaration=True, pretty_print=True
         )
         return result
 
@@ -177,7 +178,8 @@ class WordPressXmlAdapter(BaseAdapter):
         try:
             # Parse skeleton to get all valid XPath IDs
             parser = etree.XMLParser(strip_cdata=False, remove_blank_text=False)
-            tree = etree.fromstring(skeleton, parser)
+            root = etree.fromstring(skeleton, parser)
+            tree = etree.ElementTree(root)
             
             # Extract all valid XPaths from skeleton
             valid_xpaths = set()
@@ -185,7 +187,7 @@ class WordPressXmlAdapter(BaseAdapter):
             xpath_to_context = {}
             
             for xpath_pattern in self.SAFE_ZONES:
-                elements = tree.xpath(xpath_pattern, namespaces=self.NAMESPACES)
+                elements = root.xpath(xpath_pattern, namespaces=self.NAMESPACES)
                 for element in elements:
                     text_content = self._get_text_content(element)
                     if not text_content or not text_content.strip():
@@ -275,7 +277,7 @@ class WordPressXmlAdapter(BaseAdapter):
                     "unknown_ids": 0
                 },
                 "changes": [],
-                "errors": [{"error": "invalid_json", "message": str(e)}]
+                "errors": [{"error": "invalid_json", "message": f"JSON decode error: {str(e)}"}]
             }
         except etree.XMLSyntaxError as e:
             return {
