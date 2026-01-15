@@ -305,5 +305,3 @@ class WordPressXmlAdapter(BaseAdapter):
                 "changes": [],
                 "errors": [{"error": "unknown", "message": str(e)}]
             }
-        
-        return f"{tag_name}"
